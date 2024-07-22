@@ -1,0 +1,6 @@
+Flask==3.0.3
+numpy==1.26.4
+faiss-cpu==1.8.0
+Flask-cors==4.0.1
+requests==2.31.0
+tqdm==4.66.2

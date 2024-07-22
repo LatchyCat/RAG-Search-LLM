@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script type="text/javascript" src="/___vscode_livepreview_injected_script"></script>
+    <script type="text/javascript" src="/___vscode_livepreview_injected_script"></script>
+    <script type="text/javascript" src="/___vscode_livepreview_injected_script"></script>
+    <script type="text/javascript" src="/___vscode_livepreview_injected_script"></script>
+    <script type="text/javascript" src="/___vscode_livepreview_injected_script"></script>
+    <script type="text/javascript" src="/___vscode_livepreview_injected_script"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #6aa328, #cc00738a);
+            text-align: -webkit-center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            background: aliceblue;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 0;
+            margin-top: -20px;
+        }
+
+        p {
+            background: linear-gradient(to right, #e20e4f 20%, #00c4fa 30%, #7f01cd 70%, #d40000 80%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-fill-color: transparent;
+            background-size: 500% auto;
+            margin-top: 10px;
+            animation: textShine 5s ease-in-out infinite alternate;
+        }
+
+        @keyframes textShine {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            100% {
+                background-position: 100% 50%;
+            }
+        }
+
+        #searchQuery {
+            padding: 10px;
+            width: 300px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            transition: border-color 0.3s;
+        }
+
+        #searchQuery:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #results {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            justify-items: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+            row-gap: 16px;
+            column-gap: 32px;
+            justify-content: center;
+        }
+
+        .movie {
+            perspective: 1000px;
+        }
+
+        .movie-card-container {
+            width: 400px;
+            /* or any other suitable width */
+            height: 326px;
+            /* or any other suitable height */
+            perspective: 1000px;
+        }
+
+        .movie-card {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .movie-card-container:hover .movie-card {
+            transform: rotateY(180deg);
+            /* Apply the flip on hover over the container */
+        }
+
+        .movie-card:hover {
+            transform: rotateY(180deg);
+            /* Flip the card on hover */
+        }
+
+        .movie-card-front,
+        .movie-card-back {
+            position: absolute;
+            backface-visibility: hidden;
+            width: 100%;
+            height: -webkit-fill-available;
+            background-color: antiquewhite;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .highlight {
+            color: white;
+            background-color: black;
+            padding: 2px 5px;
+            text-align: left;
+            left: 0;
+            border-radius: 4px;
+        }
+
+        .movie-card-back {
+            background-color: antiquewhite;
+            transform: rotateY(180deg);
+            /* Flip the back card to face away initially */
+            padding: 10px;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .movie img {
+            width: 300px;
+            height: 94%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="logPanel" style="    position: fixed;
+        top: 10px;
+        left: 10px;
+        text-wrap: wrap;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 8px;
+        width: 300px;
+        height: 300px;
+        overflow-y: auto;
+        font-size: 14px;">
+        <strong>Processing Log:</strong>
+        <pre id="logContent" style="white-space: pre-wrap;"></pre>
+    </div>
+    <div class="header-container" style="width: 31%;
+    border-radius: 64px;
+    display: flow;
+    background: repeating-radial-gradient(#00000000, #f5f5f585 15px);
+    justify-items: center;">
+        <img src="assets/gpt-rex.png" alt="GPT-Rex Logo" style="width: 150px; height: auto;" />
+        <h1>GPT-Rex</h1>
+    </div>
+    <p style="font-family: Verdana, Geneva, Tahoma, sans-serif;">Advanced NLP + Prompt Engineering + Linear Algebra</p>
+    <p style="font-size: smaller;"> > prototype < </p>
+            <input type="text" id="searchQuery" placeholder="E.g., 'romantic comedy in Paris', 'nature documentaries '">
+            <button onclick="searchMovies()">Search</button>
+            <div id="results"></div>
+
+            <script>
+
+                // Assume the text file is named 'queries.txt' and located in the 'assets' folder
+                const queriesFilePath = 'assets/queries.txt';
+                let queries = [];
+                let currentQueryIndex = 0;
+
+                window.onload = async () => {
+                    console.log('Loading queries...');
+                    const response = await fetch(queriesFilePath);
+                    const text = await response.text();
+                    queries = text.split('\n'); // Assuming each query is on a new line
+                };
+
+                document.getElementById('searchQuery').addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowUp') {
+                        e.preventDefault(); // Prevent the default action of moving the cursor
+                        currentQueryIndex = (currentQueryIndex - 1 + queries.length) % queries.length;
+                        document.getElementById('searchQuery').value = queries[currentQueryIndex];
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault(); // Prevent the default action of moving the cursor
+                        currentQueryIndex = (currentQueryIndex + 1) % queries.length;
+                        document.getElementById('searchQuery').value = queries[currentQueryIndex];
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault(); // Prevent the default action of submitting the form
+                        searchMovies(); // Call your search function
+                    }
+                });
+
+
+                async function extractFeaturesFromPrompt(prompt) {
+
+                    updateLog('User Prompt Received: ', true); // Highlight this part
+                    updateLog(prompt); // Normal text for prompt
+                    updateLog('Standardizing Prompt ...', true);
+
+                    const systemInstruction = `
+                    As a cutting-edge feature extraction assistant, your task is to meticulously analyze the user's input and distill the key elements that are crucial for our movie recommendation algorithm. Approach each prompt with the goal of uncovering the underlying aspects that define the user's preferences and cinematic desires. Extract these features methodically, presenting them as a streamlined, comma-separated list, devoid of categorical labels for simplicity. Focus on aspects explicitly stated or implicitly suggested in the user's prompt. For example:
+                        User Input: 'I'm looking for a mystery film set in a small town with a focus on family secrets and local folklore.'
+                        Extracted Features: Family secrets, Local folklore, Small town, Mystery drama, Uncovering hidden truths, Intriguing, Contemplative, Suspenseful, Scenic landscapes, Small-town imagery
+                    Only include elements that are pertinent to the user's request. Disregard any category not relevant or mentioned. Your role is to ensure that the essence of the user's query is captured accurately, enabling us to deliver the most tailored and precise movie recommendations.
+
+                    If a category is not relevant or mentioned, it should not be included in the response.
+                    `;
+
+                    const data = {
+                        prompt: "\n\nUser Input: '" + prompt + "'",
+                        temperature: 0.20,
+                        system_prompt: {
+                            prompt: systemInstruction
+                        }
+                    };
+
+                    try {
+                        const response = await fetch('http://localhost:8080/completion', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        console.log('Result: ', result.content);
+                        updateLog(`Prompt Standardized: `, true); // Highlight this line
+                        updateLog(result.content); // Do not highlight the actual content
+                        return result.content;
+                    } catch (error) {
+                        console.error('Error extracting features:', error);
+                        updateLog('Error in standardizing prompt');
+                        return null;
+                    }
+                }
+
+                async function searchMovies() {
+                    try {
+                        const query = document.getElementById('searchQuery').value;
+                        const extractedFeatures = await extractFeaturesFromPrompt(query);
+
+                        const response = await fetch('http://localhost:8081/search', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ query: extractedFeatures })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+
+                        const movies = await response.json();
+                        displayResults(movies);
+                    } catch (error) {
+                        console.error('Fetch error:', error);
+                    }
+                }
+
+                function updateLog(message, isHighlight = false) {
+                    const logPanel = document.getElementById('logContent');
+
+                    if (isHighlight) {
+                        // Create and append highlighted text
+                        const highlightElement = document.createElement('span');
+                        highlightElement.classList.add('highlight');
+                        highlightElement.textContent = message;
+                        logPanel.appendChild(highlightElement);
+                    } else {
+                        // For non-highlighted content, append a line break and then the text content
+                        logPanel.appendChild(document.createElement('br')); // Add line break before non-highlighted text
+                        logPanel.appendChild(document.createTextNode(message));
+                    }
+
+                    logPanel.appendChild(document.createElement('br')); // Add line break after the text
+                }
+
+
+                function displayResults(movies) {
+                    // Updated displayResults function...
+                    const resultsContainer = document.getElementById('results');
+                    resultsContainer.innerHTML = '';
+                    movies.forEach(movie => {
+                        const imageUrl = `https://image.tmdb.org/t/p/original${movie.poster_path}`;
+
+                        const movieElement = document.createElement('div');
+                        movieElement.className = 'movie';
+
+                        movieElement.innerHTML = `
+                <div class="movie-card-container">
+                    <div class="movie-card">
+                        <div class="movie-card-front">
+                            <img crossorigin="anonymous" src="${imageUrl}" alt="${movie.title}">
+                        </div>
+                        <div class="movie-card-back">
+                            <h2>${movie.title} (${movie.vote_average})</h2>
+                            <p>${movie.overview}</p>
+                            <p>Similarity: ${movie.similarity_score.toFixed(2)}</p>
+                        </div>
+                    </div>
+                </div>`;
+                        resultsContainer.appendChild(movieElement);
+                    });
+                }
+
+            </script>
+</body>
+
+</html>
